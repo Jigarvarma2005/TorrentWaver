@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>File Download</title>
+    <style>
+	.download-button {
+    display: inline-block;
+    padding: 5px 10px;
+    background-color: #4CAF50;
+    color: #fff;
+    text-decoration: none;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+	</style>
+</head>
+<body>
+    <h1>Files in {{ folder }}</h1>
+    <ul>
+        {% for file in files %}
+            <li>
+                <a href="{{ url_for('download_file', filename=folder+'/'+file) }}" class="download-button">{{ file }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

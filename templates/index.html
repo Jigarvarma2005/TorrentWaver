@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TorrentWaver</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: left;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .input-group input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+        }
+
+        .input-group button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4285f4;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .status-item {
+            margin-bottom: 10px;
+			position: relative;
+            padding-bottom: 10px;
+        }
+
+        .status-item::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #000;
+			opacity: 0.8;
+        }
+
+        .status-item p {
+            font-size: 14px;
+            margin: 0;
+			padding: 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: #4285f4;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+		.file-download {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TorrentWaver</h1>
+        <div class="input-group">
+            <input id="magnet-link" type="text" placeholder="Enter Magnet Link">
+            <button id="download-button">Download</button>
+        </div>
+        <div id="download-status-container"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
+    <script>
+        // Connect to the WebSocket server
+        var socket = io();
+
+        // Function to update the download status
+        function updateStatus(statusItems) {
+            var downloadStatusContainer = document.getElementById('download-status-container');
+            if (downloadStatusContainer) {
+                downloadStatusContainer.innerHTML = '';
+
+                statusItems.forEach(function(item) {
+				    
+                    var newStatusItem = document.createElement('div');
+                    newStatusItem.id = item.download_id;
+                    newStatusItem.classList.add('status-item');
+                    var NameText = document.createElement('p');
+					NameText.innerText = "Name: " + item.name;
+					var SizeText = document.createElement('p');
+					var HasDlSpeed = item.hasOwnProperty("downloadSpeed");
+					if (HasDlSpeed) {
+					    var ProgressText = document.createElement('p');
+					    ProgressText.innerText = "Speed: " + item.downloadSpeed;
+						
+						var ETAText = document.createElement('p');
+					    ETAText.innerText = "ETA: " + item.eta;
+						
+						SizeText.innerText = "Size: " + item.totalLength + "/" + item.completedLength;
+					}
+					else{
+					    SizeText.innerText = "Size: " + item.totalLength;
+					}
+                    var statusText = document.createElement('p');
+                    statusText.innerText = "status: " + item.status;
+					
+                    if (HasDlSpeed){
+						var progressBar = document.createElement('div');
+						progressBar.classList.add('progress-bar');
+
+						var progress = document.createElement('div');
+						progress.classList.add('progress');
+						progress.style.width = item.progress + '%';
+					}
+					else{
+						var download = document.createElement('a');
+						download.href = "/download/" + item.name;
+						download.textContent = 'Download';
+						download.classList.add("file-download");
+					}
+
+                    
+					newStatusItem.appendChild(NameText);
+					newStatusItem.appendChild(SizeText);
+					if (HasDlSpeed) {
+					newStatusItem.appendChild(ProgressText);
+					newStatusItem.appendChild(ETAText);
+					}
+                    newStatusItem.appendChild(statusText);
+					if (HasDlSpeed){
+					progressBar.appendChild(progress);
+                    newStatusItem.appendChild(progressBar);
+					}
+					else{
+					newStatusItem.appendChild(download);
+					}
+                    downloadStatusContainer.appendChild(newStatusItem);
+                });
+            }
+        }
+
+        // Function to fetch and update the download status
+        function fetchStatus() {
+            fetch('/status')
+                .then(function(response) {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error('Failed to fetch download status.');
+                    }
+                })
+                .then(function(data) {
+                    updateStatus(data.status_items);
+                })
+                .catch(function(error) {
+                    console.error(error);
+                });
+        }
+
+        // Fetch and update the initial download status
+        fetchStatus();
+
+        // Refresh the status every 5 seconds
+        setInterval(function() {
+            fetchStatus();
+        }, 5000);
+
+        // Event handler for the download button
+        var downloadButton = document.getElementById('download-button');
+        if (downloadButton) {
+            downloadButton.addEventListener('click', function() {
+			    alert("Your torrent added to download list.");
+                var magnetLinkInput = document.getElementById('magnet-link');
+                var magnetLink = magnetLinkInput.value.trim();
+                if (magnetLink) {
+                    socket.emit('download_magnet', {'magnet_link': magnetLink});
+                    magnetLinkInput.value = '';
+                }
+            });
+        }
+
+        // Event handler for receiving the download started event
+        socket.on('download_started', function(data) {
+            var downloadStatusContainer = document.getElementById('download-status-container');
+            if (downloadStatusContainer) {
+                var newStatusItem = document.createElement('div');
+                newStatusItem.id = data.download_id;
+                newStatusItem.classList.add('status-item');
+
+                var statusText = document.createElement('p');
+                statusText.innerText = 'Downloading: ' + data.file_name;
+
+                var progressBar = document.createElement('div');
+                progressBar.classList.add('progress-bar');
+
+                var progress = document.createElement('div');
+                progress.classList.add('progress');
+                progress.style.width = '0%';
+
+                progressBar.appendChild(progress);
+                newStatusItem.appendChild(statusText);
+                newStatusItem.appendChild(progressBar);
+                downloadStatusContainer.appendChild(newStatusItem);
+            }
+        });
+
+        // Event handler for receiving the status update event
+        socket.on('status_update', function(data) {
+            updateStatus(data.status_items);
+        });
+    </script>
+</body>
+</html>
