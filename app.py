@@ -1,6 +1,9 @@
 # (c) Jigarvarma2005
 # Always welcome of pull requests
 
+from gevent import monkey
+monkey.patch_all()
+
 import os
 import time
 import json
@@ -9,48 +12,29 @@ from flask_socketio import SocketIO, emit
 import threading
 import aria2p
 from requests import get as rget
-from subprocess import PIPE, Popen, check_output
-from gevent import monkey
+from subprocess import Popen as subprocess_run
 from geventwebsocket.handler import WebSocketHandler
 from gevent.pywsgi import WSGIServer
-
-monkey.patch_all()
+import platform
 
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='gevent', logger=True, engineio_logger=True)
 DOWNLOADS_FOLDER = 'downloads'  # Specify the downloads folder path
 
-def subprocess_run(cmd):
-    subproc = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True, universal_newlines=True)
-    talk = subproc.communicate()
-    exitCode = subproc.returncode
-    if exitCode != 0:
-        return
-    return talk
 
 def aria_start():
-    cmd = f"aria2c \
-          --enable-rpc \
-          --rpc-listen-all=false \
-          --rpc-listen-port=6800 \
-          --max-connection-per-server=10 \
-          --rpc-max-request-size=1024M \
-          --check-certificate=false \
-          --follow-torrent=mem \
-          --seed-time=0 \
-          --max-upload-limit=1K \
-          --max-concurrent-downloads=25 \
-          --min-split-size=10M \
-          --follow-torrent=mem \
-          --split=10 \
-          --daemon=true \
-          --allow-overwrite=true"
-    process = subprocess_run(cmd)
+    operating_system = platform.system()
+    if operating_system == 'Windows':
+        cmd = "aria.bat"
+    else:
+        cmd = "chmod a+x aria.sh; ./aria.sh"
+    subprocess_run(cmd, shell=True)
+    time.sleep(5) # wait for 5sec to start aria2c
     aria2 = aria2p.API(
         aria2p.Client(host="http://localhost", port=6800, secret="")
     )
     return aria2
-    
+
 aria2 = aria_start()
 
 

@@ -25,7 +25,7 @@ This is a simple web-based aria2p downloader built using python. It allows users
 
    ```
    #Install command-line tools
-   sudo apt-get install aria2 python3 git
+   sudo apt-get install aria2 python3 git curl
    
    #Clone the repo
    git clone https://github.com/Jigarvarma2005/TorrentWaver.git
