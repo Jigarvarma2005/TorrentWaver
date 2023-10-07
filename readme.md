@@ -52,7 +52,6 @@ This is a simple web-based aria2p downloader built using python. It allows users
    ```
 
 ## Customization
-    - To change the port number of the Flask server, modify the app.py file.
 
     - To customize the appearance and layout of the web interface, modify the HTML templates in the templates folder.
 
