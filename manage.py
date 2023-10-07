@@ -1,3 +1,5 @@
+# (c) Jigarvarma2005
+
 from database import MongoDB
 
 db = MongoDB()
