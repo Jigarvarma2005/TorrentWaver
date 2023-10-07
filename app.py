@@ -91,33 +91,6 @@ def download_magnet(data):
 def test_disconnect():
     print('Client disconnected')
 
-# Route to provide the latest download status
-@app.route('/status')
-def status():
-    downloads = aria2.get_downloads()
-    status_items = []
-    for download in downloads:
-        download_status = download.status if download.total_length != download.completed_length else "complete"
-        if (download_status == "complete" and download.name.strip().upper().startswith("[METADATA]")) or download.name == "undefined":
-            continue
-        if download_status == 'complete':
-            file_dir = os.path.join(DOWNLOADS_FOLDER, download.name)
-            if not os.path.exists(file_dir):
-                continue
-        progress_data = {
-            "status": download_status,
-            "progress": download.progress,
-            'totalLength': download.total_length_string(),
-            'completedLength': download.completed_length_string(),
-            'download_id': download.gid,
-            'eta': download.eta_string(),
-            'name': download.name
-        }
-        if download_status != "complete":
-            progress_data['downloadSpeed'] = download.download_speed_string()
-        status_items.append(progress_data)
-    return {"status_items": status_items}
-
 @app.route('/download/<path:filename>')
 def download_file(filename):
     # Get the absolute path of the requested file

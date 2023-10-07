@@ -149,7 +149,7 @@
 						download.classList.add("file-download");
 					}
 
-                    
+
 					newStatusItem.appendChild(NameText);
 					newStatusItem.appendChild(SizeText);
 					if (HasDlSpeed) {
@@ -168,32 +168,6 @@
                 });
             }
         }
-
-        // Function to fetch and update the download status
-        function fetchStatus() {
-            fetch('/status')
-                .then(function(response) {
-                    if (response.ok) {
-                        return response.json();
-                    } else {
-                        throw new Error('Failed to fetch download status.');
-                    }
-                })
-                .then(function(data) {
-                    updateStatus(data.status_items);
-                })
-                .catch(function(error) {
-                    console.error(error);
-                });
-        }
-
-        // Fetch and update the initial download status
-        fetchStatus();
-
-        // Refresh the status every 5 seconds
-        setInterval(function() {
-            fetchStatus();
-        }, 5000);
 
         // Event handler for the download button
         var downloadButton = document.getElementById('download-button');
