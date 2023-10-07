@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Login Page</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f2f2f2; 
+}
+
+.container {
+  max-width: 400px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 0px 0px 10px #ccc;
+}
+.container-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h1 {
+  text-align: center;  
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+input[type="text"],
+input[type="password"] {
+  padding: 10px;
+  width: 95%;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px 15px;
+  background: #007bff;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  margin-top: 10px;
+  align-items: center;
+}
+
+.error {
+  background: #f2dede;
+  color: #a94442;
+  padding: 10px;
+  border-radius: 5px;
+  margin: 20px 0;
+  a: center;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>Login</h1>
+
+  <form action="/" method="post">
+
+    <b> <label for="username">Username</label> </b>
+    <input type="text" id="username" name="username" placeholder="Enter your username" required>
+
+    <br><br>
+
+    <b> <label for="password">Password</label> </b>
+    <input type="password" id="password" placeholder="Enter your password" name="password" required>
+
+    <div class="container-button">
+      <button type="submit">Login</button>
+    </div>
+
+  </form>
+
+  {% if error %}
+  <p class="error"><strong>Error:</strong> {{ error }}</p>
+  {% endif %}
+  
+</div>
+
+</body>
+</html>

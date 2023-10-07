@@ -81,11 +81,14 @@
         }
 		.file-download {
             display: inline-block;
-            padding: 5px 10px;
-            background-color: #4CAF50;
+            padding: 1px 10px;
+            margin-top: 5px;
+            margin-right: 10px;
+            background-color: #3bb33f;
             color: #fff;
             text-decoration: none;
-            border-radius: 4px;
+            border-radius: 5px;
+            border-color: #3bb33f;
         }
     </style>
 </head>
@@ -103,7 +106,11 @@
     <script>
         // Connect to the WebSocket server
         var socket = io();
-
+        function perform_(item, task_type){
+                             
+                             alert(`The download ${task_type}d successfuly`);
+                             socket.emit('perform_task', {'gid': item.download_id, "uid": getCookie("uid"), "task": task_type.toLowerCase()});
+             }
         // Function to update the download status
         function updateStatus(statusItems) {
             var downloadStatusContainer = document.getElementById('download-status-container');
@@ -141,6 +148,22 @@
 						var progress = document.createElement('div');
 						progress.classList.add('progress');
 						progress.style.width = item.progress + '%';
+
+                        var perform_task = document.createElement('button');
+                        var task_type = "Pause";
+                        if (item.paused == "true") {
+                            task_type = 'Resume';
+                        }
+						perform_task.textContent = task_type;
+						perform_task.classList.add("file-download");
+                        // Add click event listener
+                        perform_task.addEventListener('click', () => {perform_(item, task_type)});
+                        
+                        var cancel_task = document.createElement('button');
+						cancel_task.textContent = "Cancel";
+						cancel_task.classList.add("file-download");
+                        // Add click event listener
+                        cancel_task.addEventListener('click', () => {perform_(item, "cancelle");});
 					}
 					else{
 						var download = document.createElement('a');
@@ -148,7 +171,6 @@
 						download.textContent = 'Download';
 						download.classList.add("file-download");
 					}
-
 
 					newStatusItem.appendChild(NameText);
 					newStatusItem.appendChild(SizeText);
@@ -160,6 +182,8 @@
 					if (HasDlSpeed){
 					progressBar.appendChild(progress);
                     newStatusItem.appendChild(progressBar);
+                    newStatusItem.appendChild(perform_task);
+                    newStatusItem.appendChild(cancel_task);
 					}
 					else{
 					newStatusItem.appendChild(download);
@@ -169,6 +193,18 @@
             }
         }
 
+        function getCookie(name) {
+            var cookies = document.cookie.split(';');
+            for(var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i].trim();
+                if (cookie.startsWith(name + '=')) {
+                return cookie.split('=')[1];
+                }
+            }
+            return "";
+            }
+
+
         // Event handler for the download button
         var downloadButton = document.getElementById('download-button');
         if (downloadButton) {
@@ -177,7 +213,7 @@
                 var magnetLinkInput = document.getElementById('magnet-link');
                 var magnetLink = magnetLinkInput.value.trim();
                 if (magnetLink) {
-                    socket.emit('download_magnet', {'magnet_link': magnetLink});
+                    socket.emit('download_magnet', {'magnet_link': magnetLink, "uid": getCookie("uid")});
                     magnetLinkInput.value = '';
                 }
             });
@@ -211,6 +247,14 @@
         // Event handler for receiving the status update event
         socket.on('status_update', function(data) {
             updateStatus(data.status_items);
+        });
+
+        // Event handler for expired cookie
+        socket.on('cookie_expired', function(data) {
+            socket.disconnect();
+            socket = null;
+            io = null;
+            window.location.href = "/";
         });
     </script>
 </body>

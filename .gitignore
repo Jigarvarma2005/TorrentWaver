@@ -1,3 +1,4 @@
 downloads/
 *.pyc
 __pycache__/*
+t.py

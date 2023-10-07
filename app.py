@@ -6,20 +6,21 @@ monkey.patch_all()
 
 import os
 import time
-import json
-from flask import Flask, render_template, request, send_from_directory
-from flask_socketio import SocketIO, emit
-import threading
 import aria2p
-from requests import get as rget
+import platform
+import threading
+from configs import Config
+from database import MongoDB
+from gevent.pywsgi import WSGIServer
+from flask_socketio import SocketIO, emit
 from subprocess import Popen as subprocess_run
 from geventwebsocket.handler import WebSocketHandler
-from gevent.pywsgi import WSGIServer
-import platform
+from flask import Flask, render_template, request, send_from_directory, make_response
+
 
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='gevent', logger=True, engineio_logger=True)
-DOWNLOADS_FOLDER = 'downloads'  # Specify the downloads folder path
+db = MongoDB(Config.MONGODB_URI)
 
 
 def aria_start():
@@ -48,7 +49,7 @@ def monitor_downloads():
             if (download_status == "complete" and download.name.strip().upper().startswith("[METADATA]")) or download.name == "undefined":
                 continue
             if download_status == 'complete':
-                file_dir = os.path.join(DOWNLOADS_FOLDER, download.name)
+                file_dir = os.path.join(Config.DOWNLOADS_FOLDER, download.name)
                 if not os.path.exists(file_dir):
                     continue
             progress_data = {
@@ -58,7 +59,10 @@ def monitor_downloads():
             'completedLength': download.completed_length_string(),
             'download_id': download.gid,
             'eta': download.eta_string(),
-            'name': download.name
+            'name': download.name,
+            "active": "true" if download.is_active else "false",
+            "paused": "true" if download.is_paused else "false",
+            "failed": "true" if download.has_failed else "false"
             }
             if download_status != "complete":
                 progress_data['downloadSpeed'] = download.download_speed_string()
@@ -66,20 +70,49 @@ def monitor_downloads():
         socketio.emit('status_update', {"status_items": status_items}, namespace='/')
         socketio.sleep(7)  # Refresh status every 7 seconds
 
+
 # Start the background thread when the server is running
 @socketio.on('connect', namespace='/')
 def start_monitoring_thread():
     print("connect")
 
 # Route to serve the index.html page
-@app.route('/')
+@app.route('/', methods=["GET","POST"])
 def index():
-    return render_template('index.html')
+    is_logged = request.cookies.get('uid', False)
+    
+    if request.method == 'POST' and not is_logged:
+        username = request.form['username']
+        password = request.form['password']
+        if db.validate_login(username, password):
+            #Avoid sharing
+            db.delete_cookies(username)
+            uid = db.save_cookies(username)
+            resp = make_response(render_template('index.html'))
+            resp.set_cookie('uid', uid)
+            return resp
+        else:
+            return render_template('login.html', error="username or password inorrect.")
+
+    if is_logged:
+        is_success = db.get_cookies(is_logged)
+        if is_success:
+            return render_template('index.html')
+
+    resp = make_response(render_template('login.html'))
+    resp.delete_cookie('uid')
+    return resp
 
 # WebSocket event handlers
 @socketio.on('download_magnet', namespace='/')
 def download_magnet(data):
-    download_dir = os.path.join(os.getcwd(), DOWNLOADS_FOLDER)
+    uid = data['uid']
+    if uid != "":
+        is_success = db.get_cookies(uid)
+    if not is_success or uid == "":
+        emit('cookie_expired', {"msg": "Cookies expired."})
+
+    download_dir = os.path.join(os.getcwd(), Config.DOWNLOADS_FOLDER)
     options = {
         'dir': download_dir,
     }
@@ -87,15 +120,38 @@ def download_magnet(data):
     download = aria2.add_magnet(magnet_link, options=options)
     emit('download_started', {'download_id': download.gid, 'file_name': download.name}, broadcast=True)
 
+@socketio.on('perform_task', namespace='/')
+def perform_task(data):
+    uid = data['uid']
+    if uid != "":
+        is_success = db.get_cookies(uid)
+    if not is_success or uid == "":
+        emit('cookie_expired', {"msg": "Cookies expired."})
+    task = data["task"]
+    if task in ["pause", "resume", "cancelle"]:
+        download = aria2.get_download(data["gid"])
+        assert download
+        if task == "pause":
+            download.pause(True)
+        elif task == "resume":
+            download.resume()
+        elif task == "cancelle":
+            download.remove(True, True)
+
 @socketio.on('disconnect', namespace='/')
 def test_disconnect():
     print('Client disconnected')
 
+
 @app.route('/download/<path:filename>')
 def download_file(filename):
+    is_logged = request.cookies.get('uid', False)
+    if is_logged:
+        is_success = db.get_cookies(is_logged)
+    if not is_logged or not is_success:
+        return render_template('forbidden.html')
     # Get the absolute path of the requested file
-    file_path = os.path.join(DOWNLOADS_FOLDER, filename)
-
+    file_path = os.path.join(Config.DOWNLOADS_FOLDER, filename)
     # Check if the file path is within the downloads folder
     if os.path.isdir(file_path):
         # Get the list of files in the folder
@@ -103,7 +159,7 @@ def download_file(filename):
         return render_template('folders.html', folder=filename, files=files)
     elif os.path.exists(file_path):
         # Send the file for download
-        return send_from_directory(DOWNLOADS_FOLDER, filename, as_attachment=True)
+        return send_from_directory(Config.DOWNLOADS_FOLDER, filename, as_attachment=True)
     else:
         return render_template('forbidden.html')
 
@@ -111,5 +167,5 @@ def download_file(filename):
 if __name__ == '__main__':
     # Start the background thread for monitoring downloads
     threading.Thread(target=monitor_downloads, daemon=True).start()
-    http_server = WSGIServer(('0.0.0.0', 5000), app, handler_class=WebSocketHandler)
+    http_server = WSGIServer((Config.BIND_ADDRESS, Config.PORT), app, handler_class=WebSocketHandler)
     http_server.serve_forever()

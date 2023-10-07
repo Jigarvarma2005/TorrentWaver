@@ -3,3 +3,5 @@ Flask
 Flask-SocketIO
 Aria2p
 Requests
+dnspython
+pymongo
