@@ -1,8 +1,10 @@
 # (c) Jigarvarma2005
 
+from configs import Config
 from database import MongoDB
 
-db = MongoDB()
+db = MongoDB(Config.MONGODB_URI)
+
 print("TorrentWaver Users Management.")
 while True:
     print("\nSelect from below options")
