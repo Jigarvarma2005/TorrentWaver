@@ -111,7 +111,7 @@ def download_magnet(data):
         is_success = db.get_cookies(uid)
     if not is_success or uid == "":
         emit('cookie_expired', {"msg": "Cookies expired."})
-
+        return
     download_dir = os.path.join(os.getcwd(), Config.DOWNLOADS_FOLDER)
     options = {
         'dir': download_dir,
@@ -127,6 +127,7 @@ def perform_task(data):
         is_success = db.get_cookies(uid)
     if not is_success or uid == "":
         emit('cookie_expired', {"msg": "Cookies expired."})
+        return
     task = data["task"]
     if task in ["pause", "resume", "cancelle"]:
         download = aria2.get_download(data["gid"])
