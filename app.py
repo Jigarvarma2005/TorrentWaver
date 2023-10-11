@@ -31,10 +31,9 @@ def aria_start():
         cmd = "chmod a+x aria.sh; ./aria.sh"
     subprocess_run(cmd, shell=True)
     time.sleep(5) # wait for 5sec to start aria2c
-    aria2 = aria2p.API(
+    return aria2p.API(
         aria2p.Client(host="http://localhost", port=6800, secret="")
     )
-    return aria2
 
 aria2 = aria_start()
 
@@ -80,23 +79,21 @@ def start_monitoring_thread():
 @app.route('/', methods=["GET","POST"])
 def index():
     is_logged = request.cookies.get('uid', False)
-    
+
     if request.method == 'POST' and not is_logged:
         username = request.form['username']
         password = request.form['password']
-        if db.validate_login(username, password):
-            #Avoid sharing
-            db.delete_cookies(username)
-            uid = db.save_cookies(username)
-            resp = make_response(render_template('index.html'))
-            resp.set_cookie('uid', uid)
-            return resp
-        else:
+        if not db.validate_login(username, password):
             return render_template('login.html', error="username or password inorrect.")
 
+        #Avoid sharing
+        db.delete_cookies(username)
+        uid = db.save_cookies(username)
+        resp = make_response(render_template('index.html'))
+        resp.set_cookie('uid', uid)
+        return resp
     if is_logged:
-        is_success = db.get_cookies(is_logged)
-        if is_success:
+        if is_success := db.get_cookies(is_logged):
             return render_template('index.html')
 
     resp = make_response(render_template('login.html'))

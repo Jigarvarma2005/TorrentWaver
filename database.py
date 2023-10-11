@@ -14,14 +14,14 @@ class MongoDB(object):
             )
     
     def get_all_logins(self):
-        all_users = self.user_logins.find({})
-        return all_users
+        return self.user_logins.find({})
     
     def validate_login(self, username, password):
-        is_exist = self.user_logins.find_one({"uname": username, "pass": password})
-        if is_exist:
-            return True
-        return False
+        return bool(
+            is_exist := self.user_logins.find_one(
+                {"uname": username, "pass": password}
+            )
+        )
     
     def new_login(self, username, password):
         self.user_logins.insert_one({"uname": username, "pass": password})
@@ -39,8 +39,7 @@ class MongoDB(object):
         return uid
     
     def get_cookies(self, uid):
-        is_exist = self.user_cookies.find_one({"uid": uid})
-        if is_exist:
+        if is_exist := self.user_cookies.find_one({"uid": uid}):
             return is_exist
         return False
     
