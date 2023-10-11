@@ -23,10 +23,8 @@ while True:
     elif in_put == "3":
         print("This list in username:password format\n")
         all_users = db.get_all_logins()
-        i = 1
-        for user in all_users:
+        for i, user in enumerate(all_users, start=1):
             print(f"{i} = {user['uname']}:{user['pass']}")
-            i += 1
     elif in_put == "4":
         exit()
     else:
